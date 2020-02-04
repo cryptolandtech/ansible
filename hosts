@@ -1,0 +1,8 @@
+# Celo servers group
+[celo]
+passive ansible_host=95.217.74.75
+active ansible_host=88.198.65.222
+
+[celo:vars]
+ansible_python_interpreter=/usr/bin/python3
+
