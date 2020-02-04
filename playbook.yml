@@ -68,7 +68,11 @@
         state: present
         regexp: "^#?UsePAM" 
         line: "UsePAM yes"
-        notify: restart sshd
+
+    - name: restart sshd
+      systemd:
+        name: sshd
+        state: restarted
 
 # Install Packages
     - name: Update apt
@@ -129,4 +133,16 @@
         state: present
         update_cache: yes
     
-    
+    - name: Add telegraf config
+      template:
+        src: ./templates/telegraf.conf
+        dest: /etc/telegraf/telegraf.conf
+        follow: yes 
+      vars:
+        telegraf_name: "celo_active"
+
+    - name: restart telegraf 
+      systemd:
+        name: telegraf
+        state: restarted
+        enabled: yes
