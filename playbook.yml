@@ -40,12 +40,12 @@
         state: present
         key: "{{ copy_local_key }}"
 
-#    - name: Disable root login
-#      lineinfile:
-#        path: /etc/ssh/sshd_config
-#        state: present
-#        regexp: '^#?PermitRootLogin'
-#        line: 'PermitRootLogin no'
+    - name: Disable root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
 
     - name: Disable empty password login
       lineinfile:
