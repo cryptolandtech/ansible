@@ -1,8 +1,8 @@
 ---
-create_user: "ubuntu" 
+create_user: "metis" 
 copy_local_key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
 sys_packages: [ 'curl', 'vim', 'git', 'ufw', 'fail2ban']
-influx_db: "telegraf"
-influx_username: "telegraf"
-influx_password: "telegraf"
-influx_ip: "78.47.39.92"
+influx_db: ""
+influx_username: ""
+influx_password: ""
+influx_endpoint: "http://:8086"

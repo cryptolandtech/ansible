@@ -1,14 +1,18 @@
 ---
 - name: Initial Ubuntu installation
   hosts: all
-  remote_user: root
+  #remote_user: root
+  remote_user: metis 
+  become: true
   gather_facts: true
   vars_files:
     - vars/default.yml
 
   tasks:
-    - name: Install Prerequisites
-      apt: name=aptitude update_cache=yes state=latest force_apt_get=yes
+    - name: Update cache & upgrade 
+      apt: 
+        update_cache: yes 
+        upgrade: 'yes'
 
     # Sudo Group Setup
     - name: Make sure we have a 'wheel' group
@@ -40,67 +44,21 @@
         state: present
         key: "{{ copy_local_key }}"
 
-    - name: Disable root login
+    - name: ssh config
       lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: '^#?PermitRootLogin'
-        line: 'PermitRootLogin no'
+        dest: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?ChallengeResponseAuthentication', line: 'ChallengeResponseAuthentication no' }
+        - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+        - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
+        - { regexp: '^#?AllowUsers', line: 'AllowUsers metis' }
 
-    - name: Disable empty password login
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: "^#?PermitEmptyPasswords" 
-        line: "PermitEmptyPasswords no"
- 
-    - name: Disable password login
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-       # regexp: "^(#\s*)?PasswordAuthentication " 
-        regexp: "^#?PasswordAuthentication " 
-        line: "PasswordAuthentication no"
-
-    - name: Disable Challenge Response Authentication
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: "^#?ChallengeResponseAuthentication" 
-        line: "ChallengeResponseAuthentication no"
-
-    - name: MaxAuthTries 
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: "^#?MaxAuthTries" 
-        line: "MaxAuthTries 3"
-
-    - name: ClientAliveInterval 
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: "^#?ClientAliveInterval" 
-        line: "ClientAliveInterval 300"
-
-    - name: Enable PAM
-      lineinfile: 
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: "^#?UsePAM" 
-        line: "UsePAM yes"
-
-    - name: Allow only ubuntu user login
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        state: present
-        regexp: "^#?ChallengeResponseAuthentication" 
-        line: "ChallengeResponseAuthentication no"
-
-    - name: restart sshd
-      systemd:
-        name: sshd
-        state: restarted
 
     # Install Packages
     - name: Update apt
@@ -112,12 +70,12 @@
     # Fail2ban
     - name: update configuration file /etc/fail2ban/fail2ban.local
       template:
-        src: fail2ban/fail2ban.local.j2
+        src: fail2ban.local
         dest: /etc/fail2ban/fail2ban.local
         owner: root
         group: root
         mode: 0644
-      notify: restart fail2ban 
+      notify: restart_fail2ban 
 
     # UFW Setup
     - name: UFW - Allow SSH connections
@@ -181,18 +139,12 @@
         dest: /etc/telegraf/telegraf.conf
         follow: yes 
       vars:
-        telegraf_name: inventory_hostname 
+        telegraf_name: "{{inventory_hostname}}"
       notify:
         - restart_telegraf
 
-    - name: restart telegraf 
-      systemd:
-        name: telegraf
-        state: restarted
-        enabled: yes
-
   handlers:
-    - name: restart_sshd
+    - name: restart_ssh
       service: 
         name: ssh 
         state: restarted
@@ -205,4 +157,9 @@
     - name: restart_docker 
       service: 
         name: docker 
+        state: restarted
+
+    - name: restart_fail2ban
+      service: 
+        name: fail2ban 
         state: restarted

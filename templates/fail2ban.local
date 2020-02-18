@@ -1,0 +1,10 @@
+[DEFAULT]
+#work with ufw instead of iptables
+#banaction=ufw
+
+[sshd]
+#Set ban time to 3 days
+bantime = 259200
+#Decrease the number of failed login attempts before banning to 3
+maxretry=3
+
