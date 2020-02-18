@@ -1,8 +1,8 @@
 ---
-- hosts: celo 
+- name: Initial Ubuntu installation
+  hosts: all
   remote_user: root
   gather_facts: true
-  become: true
   vars_files:
     - vars/default.yml
 
@@ -10,7 +10,7 @@
     - name: Install Prerequisites
       apt: name=aptitude update_cache=yes state=latest force_apt_get=yes
 
-# Sudo Group Setup
+    # Sudo Group Setup
     - name: Make sure we have a 'wheel' group
       group:
         name: wheel
@@ -24,7 +24,7 @@
         line: '%wheel ALL=(ALL) NOPASSWD: ALL'
         validate: '/usr/sbin/visudo -cf %s'
 
-# User + Key Setup
+    # User + Key Setup
     - name: Create a new regular user with sudo privileges
       user:
         name: "{{ create_user }}"
@@ -62,6 +62,27 @@
         regexp: "^#?PasswordAuthentication " 
         line: "PasswordAuthentication no"
 
+    - name: Disable Challenge Response Authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: "^#?ChallengeResponseAuthentication" 
+        line: "ChallengeResponseAuthentication no"
+
+    - name: MaxAuthTries 
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: "^#?MaxAuthTries" 
+        line: "MaxAuthTries 3"
+
+    - name: ClientAliveInterval 
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: "^#?ClientAliveInterval" 
+        line: "ClientAliveInterval 300"
+
     - name: Enable PAM
       lineinfile: 
         path: /etc/ssh/sshd_config
@@ -69,19 +90,36 @@
         regexp: "^#?UsePAM" 
         line: "UsePAM yes"
 
+    - name: Allow only ubuntu user login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: "^#?ChallengeResponseAuthentication" 
+        line: "ChallengeResponseAuthentication no"
+
     - name: restart sshd
       systemd:
         name: sshd
         state: restarted
 
-# Install Packages
+    # Install Packages
     - name: Update apt
       apt: update_cache=yes
 
     - name: Install required system packages
       apt: name={{ sys_packages }} state=latest
 
-# UFW Setup
+    # Fail2ban
+    - name: update configuration file /etc/fail2ban/fail2ban.local
+      template:
+        src: fail2ban/fail2ban.local.j2
+        dest: /etc/fail2ban/fail2ban.local
+        owner: root
+        group: root
+        mode: 0644
+      notify: restart fail2ban 
+
+    # UFW Setup
     - name: UFW - Allow SSH connections
       ufw:
         rule: allow
@@ -93,7 +131,8 @@
         policy: deny
         direction: incoming
 
-# Docker setup
+
+    # Docker setup
     - name: Install aptitude using apt
       apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
 
@@ -113,8 +152,11 @@
 
     - name: Update apt and install docker-ce
       apt: update_cache=yes name=docker-ce state=latest
+      notify:
+        - restart_docker 
 
-# Telegraf setup
+
+    # Telegraf setup
     - name: Add Telegraf repo 
       lineinfile:
         path: /etc/apt/sources.list.d/influxdata.list
@@ -139,10 +181,28 @@
         dest: /etc/telegraf/telegraf.conf
         follow: yes 
       vars:
-        telegraf_name: "celo_active"
+        telegraf_name: inventory_hostname 
+      notify:
+        - restart_telegraf
 
     - name: restart telegraf 
       systemd:
         name: telegraf
         state: restarted
         enabled: yes
+
+  handlers:
+    - name: restart_sshd
+      service: 
+        name: ssh 
+        state: restarted
+
+    - name: restart_telegraf 
+      service: 
+        name: telegraf 
+        state: restarted
+
+    - name: restart_docker 
+      service: 
+        name: docker 
+        state: restarted
