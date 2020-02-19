@@ -1,3 +1,2 @@
 [test]
-test_server ansible_host=116.203.41.123
-
+test_server ansible_host=116.203.41.123 ansible_python_interpreter=/usr/bin/python3

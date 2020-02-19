@@ -1,9 +1,9 @@
 ---
-- name: Initial Ubuntu installation
+- name: Initial Ubuntu 18.04 installation
   hosts: all
-  #remote_user: root
-  remote_user: metis 
-  become: true
+  remote_user: root
+  #remote_user: metis 
+  #become: true
   gather_facts: true
   vars_files:
     - vars/default.yml
@@ -57,15 +57,15 @@
         - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
         - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
         - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
-        - { regexp: '^#?AllowUsers', line: 'AllowUsers metis' }
+        - { regexp: '^#?AllowUsers', line: 'AllowUsers {{ create_user }}' }
 
 
     # Install Packages
     - name: Update apt
       apt: update_cache=yes
 
-    - name: Install required system packages
-      apt: name={{ sys_packages }} state=latest
+    - name: Install required packages
+      apt: name={{ packages }} state=latest
 
     # Fail2ban
     - name: update configuration file /etc/fail2ban/fail2ban.local
@@ -85,34 +85,29 @@
 
     - name: UFW - Deny all other incoming traffic by default
       ufw:
-        state: enabled
+        state: disabled
         policy: deny
         direction: incoming
 
 
-    # Docker setup
-    - name: Install aptitude using apt
-      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+    ### Docker setup. Uncomment if needed
+    - name: Install Docker
+      block:
+        - name: Add Docker gpg key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
 
-    - name: Install required system packages
-      apt: name={{ item }} state=latest update_cache=yes
-      loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+        - name: Add Docker Repository
+          apt_repository:
+            repo: deb https://download.docker.com/linux/ubuntu bionic stable
+            state: present
 
-    - name: Add Docker GPG apt Key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Add Docker Repository
-      apt_repository:
-        repo: deb https://download.docker.com/linux/ubuntu bionic stable
-        state: present
-
-    - name: Update apt and install docker-ce
-      apt: update_cache=yes name=docker-ce state=latest
-      notify:
-        - restart_docker 
-
+        - name: Update apt and install docker-ce
+          apt: update_cache=yes name=docker-ce state=latest
+          notify:
+            - restart_docker 
+      when: install_docker == true
 
     # Telegraf setup
     - name: Add Telegraf repo 

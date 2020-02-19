@@ -1,8 +1,9 @@
 ---
 create_user: "metis" 
 copy_local_key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_rsa.pub') }}"
-sys_packages: [ 'curl', 'vim', 'git', 'ufw', 'fail2ban']
-influx_db: ""
-influx_username: ""
-influx_password: ""
+packages: [ 'curl', 'vim', 'git', 'ufw', 'fail2ban', 'apt-transport-https', 'ca-certificates', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+influx_db: "telegraf"
+influx_username: "telegraf"
+influx_password: "telegraf"
 influx_endpoint: "http://:8086"
+install_docker: false
