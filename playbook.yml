@@ -2,7 +2,7 @@
 - name: Initial Ubuntu 18.04 installation
   hosts: all
   remote_user: root
-  #remote_user: metis 
+  #remote_user: "{{ create_user }}"
   #become: true
   gather_facts: true
   vars_files:
@@ -58,14 +58,16 @@
         - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
         - { regexp: '^#?UsePAM', line: 'UsePAM yes' }
         - { regexp: '^#?AllowUsers', line: 'AllowUsers {{ create_user }}' }
-
+      notify:
+        - restart_ssh
+    
 
     # Install Packages
     - name: Update apt
       apt: update_cache=yes
 
     - name: Install required packages
-      apt: name={{ packages }} state=latest
+      apt: name={{ sys_packages }} state=latest
 
     # Fail2ban
     - name: update configuration file /etc/fail2ban/fail2ban.local
@@ -90,7 +92,7 @@
         direction: incoming
 
 
-    ### Docker setup. Uncomment if needed
+    ### Docker setup. 
     - name: Install Docker
       block:
         - name: Add Docker gpg key
@@ -107,8 +109,8 @@
           apt: update_cache=yes name=docker-ce state=latest
           notify:
             - restart_docker 
-      when: install_docker == true
-
+      #when: install_docker == true
+      when: '"docker" in custom_packages'
     # Telegraf setup
     - name: Add Telegraf repo 
       lineinfile:
